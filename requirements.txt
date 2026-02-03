@@ -1,31 +1,35 @@
 # Web Framework
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-multipart==0.0.6
+fastapi
+uvicorn[standard]
+python-multipart
 
 # OCR & Document Processing
-pytesseract==0.3.10
-passporteye==2.1.0
-pdf2image==1.16.3
-Pillow==10.2.0
-python-dateutil==2.8.2
+pytesseract
+easyocr
+passporteye
+pdf2image
+pdfplumber
+pypdf
+Pillow
+python-dateutil
+opencv-python
 
 # Data Validation
-pydantic==2.5.3
-pydantic-settings==2.1.0
+pydantic
+pydantic-settings
 
 # Browser Automation
-playwright==1.41.0
+playwright
 
 # LLM Clients (optional - for enhanced extraction)
-openai==1.12.0
-anthropic==0.18.0
+openai
+anthropic
 
 # Utilities
-python-dotenv==1.0.0
-aiofiles==23.2.1
+python-dotenv
+aiofiles
 
 # Development
-pytest==8.0.0
-pytest-asyncio==0.23.4
-httpx==0.26.0
+pytest
+pytest-asyncio
+httpx
