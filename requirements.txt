@@ -5,11 +5,14 @@ python-multipart
 
 # OCR & Document Processing
 pytesseract
+easyocr
 passporteye
 pdf2image
 pdfplumber
+pypdf
 Pillow
 python-dateutil
+opencv-python
 
 # Data Validation
 pydantic
