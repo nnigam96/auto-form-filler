@@ -1,1 +1,118 @@
-<!-- Document upload interface -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Automation - Auto Form Filler</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📄 Document Automation</h1>
+            <p>Upload passport and G-28 documents to automatically extract data and fill immigration forms</p>
+            <p class="subtitle">Supported formats: PDF, JPEG, PNG</p>
+        </header>
+
+        <main>
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="upload-section">
+                    <div class="upload-box" id="passport-box">
+                        <label for="passport">
+                            <div class="upload-icon">📄</div>
+                            <span class="upload-label">Passport</span>
+                            <span class="upload-hint">PDF, JPG, or PNG</span>
+                        </label>
+                        <input type="file" id="passport" name="passport" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <div class="file-name" id="passport-name"></div>
+                    </div>
+
+                    <div class="upload-box" id="g28-box">
+                        <label for="g28">
+                            <div class="upload-icon">📋</div>
+                            <span class="upload-label">G-28 Form</span>
+                            <span class="upload-hint">PDF, JPG, or PNG</span>
+                        </label>
+                        <input type="file" id="g28" name="g28" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <div class="file-name" id="g28-name"></div>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" id="extract-btn" class="btn btn-secondary">
+                        Extract Data Only
+                    </button>
+                    <button type="submit" id="fill-btn" class="btn btn-primary">
+                        Extract & Fill Form
+                    </button>
+                    <button type="button" id="reset-btn" class="btn btn-reset">
+                        Reset & Clear
+                    </button>
+                </div>
+            </form>
+
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Processing documents...</p>
+            </div>
+
+            <div id="results" class="results hidden">
+                <h2>Results</h2>
+
+                <div class="result-tabs">
+                    <button class="tab-btn active" data-tab="extraction">Extraction Data</button>
+                    <button class="tab-btn" data-tab="form">Filled Form</button>
+                    <button class="tab-btn" data-tab="stats">Statistics</button>
+                </div>
+
+                <div class="tab-content active" id="tab-extraction">
+                    <div class="result-section" id="passport-results">
+                        <h3>📘 Passport Data</h3>
+                        <div class="data-display">
+                            <pre id="passport-data"></pre>
+                        </div>
+                    </div>
+
+                    <div class="result-section" id="g28-results">
+                        <h3>📋 G-28 Form Data</h3>
+                        <div class="data-display">
+                            <pre id="g28-data"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-form">
+                    <div class="result-section" id="screenshot-section">
+                        <h3>📸 Filled Form Screenshot</h3>
+                        <div id="screenshot-container" class="hidden">
+                            <img id="screenshot" alt="Filled form screenshot">
+                            <p class="screenshot-note">Form has been automatically filled. Review the screenshot above.</p>
+                        </div>
+                        <div id="no-screenshot" class="info-message">
+                            <p>No screenshot available. Use "Extract & Fill Form" to generate a screenshot.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-stats">
+                    <div class="result-section" id="fill-stats">
+                        <h3>📊 Statistics</h3>
+                        <div id="stats-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="error" class="error hidden">
+                <h3>Error</h3>
+                <p id="error-message"></p>
+            </div>
+        </main>
+
+        <footer>
+            <p>Document automation for immigration forms</p>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
