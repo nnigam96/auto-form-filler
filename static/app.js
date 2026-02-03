@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const extractBtn = document.getElementById('extract-btn');
     const fillBtn = document.getElementById('fill-btn');
     const resetBtn = document.getElementById('reset-btn');
+    const headlessToggle = document.getElementById('headless-toggle');
     const loading = document.getElementById('loading');
     const results = document.getElementById('results');
     const error = document.getElementById('error');
@@ -85,9 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('passport', passportInput.files[0]);
             formData.append('g28', g28Input.files[0]);
             
-            // Always use headless mode for form filling (faster, no browser window)
+            // Use toggle to determine headless mode
             if (includeScreenshot) {
-                formData.append('headless', 'true');
+                formData.append('headless', headlessToggle.checked ? 'true' : 'false');
             }
 
             const response = await fetch(endpoint, {

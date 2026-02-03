@@ -197,6 +197,8 @@ pytest tests/ --cov=app --cov-report=html
 - Heavily rotated or skewed scans may require manual correction
 - Handwritten entries on G-28 forms have lower OCR accuracy
 - LLM mode requires API keys and incurs costs
+- Date of issue is not captured (not part of MRZ; would require visual zone OCR)
+- Visible browser mode keeps browser open for 5 minutes for review; request remains pending during this time
 
 ## Future Improvements
 
@@ -204,6 +206,8 @@ pytest tests/ --cov=app --cov-report=html
 - [ ] Batch processing for multiple documents
 - [ ] Confidence scoring with manual review workflow
 - [ ] Integration with case management systems
+- [ ] Advanced document processing (Reducto, Azure Document Intelligence, AWS Textract)
+- [ ] Visual zone OCR for date of issue and other non-MRZ fields
 
 ## License
 

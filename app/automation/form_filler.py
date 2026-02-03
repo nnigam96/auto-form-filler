@@ -311,7 +311,10 @@ async def fill_form_async(
     async with async_playwright() as p:
         try:
             # Launch browser
-            browser = await p.chromium.launch(headless=headless)
+            browser = await p.chromium.launch(
+                headless=headless,
+                slow_mo=100 if not headless else 0  # Slow down for visible mode
+            )
             context = await browser.new_context(
                 viewport={"width": 1280, "height": 900}
             )
@@ -409,7 +412,14 @@ async def fill_form_async(
             logger.info("Form filled. NOT submitting as per requirements.")
 
             result["success"] = True
-            await browser.close()
+
+            if headless:
+                await browser.close()
+            else:
+                # Keep browser open for 5 minutes for manual review
+                logger.info("Browser open for review (5 min). Close browser manually when done.")
+                await asyncio.sleep(180)
+                await browser.close()
 
         except Exception as e:
             logger.error(f"Form filling failed: {e}")
