@@ -1,0 +1,9 @@
+{
+  "method": "tesseract",
+  "full_name": "tesseract_psm11_otsu",
+  "score": 0.32130512385181315,
+  "latency_ms": 2969.9721336364746,
+  "timestamp": "2026-02-09T01:08:40.679144",
+  "psm": 11,
+  "preprocess": "otsu"
+}

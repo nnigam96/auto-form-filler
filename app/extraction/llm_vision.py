@@ -1,14 +1,14 @@
 """
 LLM Vision extraction using Ollama (local) or OpenAI (cloud).
 
-For 16GB MacBook Air, recommended models:
-- llava:7b (default) - Good balance of speed/quality, ~4.5GB RAM
-- llava:13b - Better quality, slower, ~8GB RAM
-- bakllava - Alternative vision model
+Recommended models:
+- llama3.2-vision (default) - Best quality for document reading
+- llava:13b - Alternative, slower
+- llava:7b - Faster but less accurate
 
 Usage:
     # Install Ollama: brew install ollama
-    # Pull model: ollama pull llava:7b
+    # Pull model: ollama pull llama3.2-vision
     # Start server: ollama serve
 """
 
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # Ollama configuration
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llava:7b")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2-vision")
 
 
 def check_ollama_available() -> bool:
@@ -128,18 +128,32 @@ def parse_llm_date(date_str: Optional[str]) -> Optional[date]:
     return None
 
 def encode_image(image_path: Path) -> str:
-    """Encodes an image to base64 string."""
-    with open(image_path, "rb") as image_file:
+    """Encodes an image to base64 string. Converts PDFs to images first (uses first page)."""
+    # Convert PDF to image if needed
+    actual_path = image_path
+    if image_path.suffix.lower() == '.pdf':
+        try:
+            from app.utils.pdf_utils import pdf_to_images
+            images = pdf_to_images(image_path, dpi=300)
+            if images:
+                actual_path = images[0]  # LLM Vision uses first page
+            else:
+                raise ValueError("PDF conversion returned no images")
+        except Exception as e:
+            logger.error(f"PDF to image conversion failed: {e}")
+            raise
+    
+    with open(actual_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 def extract_with_ollama(image_path: Path) -> Optional[PassportData]:
     """
-    Uses Ollama with LLaVA model to extract passport data locally.
+    Uses Ollama with llama3.2-vision model to extract passport data locally.
     This handles rotated, blurry, or non-standard passports.
 
     Requires:
         - Ollama installed: brew install ollama
-        - Model pulled: ollama pull llava:7b
+        - Model pulled: ollama pull llama3.2-vision
         - Server running: ollama serve
     """
     if not check_ollama_available():

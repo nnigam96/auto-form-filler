@@ -2,11 +2,14 @@
 State definition for the passport extraction agent graph.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from typing_extensions import TypedDict
 
+if TYPE_CHECKING:
+    from app.extraction.pipeline import ExtractionResult
 
-class PassportState(TypedDict):
+
+class PassportState(TypedDict, total=False):
     """State passed between nodes in the extraction graph."""
 
     # Input
@@ -33,3 +36,16 @@ class PassportState(TypedDict):
 
     # LLM settings
     use_llm: bool
+
+    # V3: Field aggregation
+    low_confidence_fields: List[str]
+
+    # V4: Fraud detection
+    visual_data: Optional[Dict[str, Any]]  # Data from LLM Vision (what's printed)
+    mrz_data: Optional[Dict[str, Any]]     # Data from MRZ OCR
+
+    # V5: HITL result
+    extraction_result: Optional[Any]  # ExtractionResult from graph_v5
+    mrz_lines: Optional[List[str]]
+    has_valid_checksum: bool
+    mrz_confidence: float

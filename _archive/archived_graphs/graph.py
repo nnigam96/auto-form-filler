@@ -19,14 +19,16 @@ logger = logging.getLogger(__name__)
 async def node_ensemble(state: PassportState) -> PassportState:
     """
     Run all OCR tools in parallel and vote on results.
+    Accepts both image and PDF paths.
     """
-    logger.info(f"Running ensemble OCR on: {state['image_path']}")
+    file_path = state.get("image_path") or state.get("file_path")
+    logger.info(f"Running ensemble OCR on: {file_path}")
 
     # Run all tools concurrently
     results = await asyncio.gather(
-        run_passport_eye(state["image_path"]),
-        run_tesseract(state["image_path"]),
-        run_easyocr(state["image_path"]),
+        run_passport_eye(file_path),
+        run_tesseract(file_path),
+        run_easyocr(file_path),
         return_exceptions=True,
     )
 
@@ -91,7 +93,8 @@ async def node_vision_fallback(state: PassportState) -> PassportState:
         from app.extraction.llm_vision import extract_with_llm_vision
         from pathlib import Path
 
-        result = extract_with_llm_vision(Path(state["image_path"]))
+        file_path = state.get("image_path") or state.get("file_path")
+        result = extract_with_llm_vision(Path(file_path))
 
         if result:
             # Convert Pydantic to dict

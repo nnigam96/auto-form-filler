@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document Automation - Auto Form Filler</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
     <div class="container">
@@ -54,6 +54,10 @@
                     <label class="toggle-label">
                         <input type="checkbox" id="headless-toggle" checked>
                         <span>Run in background (headless)</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="llm-toggle" checked>
+                        <span>Use LLM Vision (for fraud detection)</span>
                     </label>
                 </div>
             </form>
@@ -120,6 +124,32 @@
         </footer>
     </div>
 
-    <script src="/static/app.js"></script>
+    <!-- HITL Review Modal -->
+    <div id="hitl-modal" class="modal-overlay hidden">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Review Required</h2>
+                <p class="modal-subtitle">Some fields have conflicting values. Please select the correct value for each field.</p>
+            </div>
+
+            <div class="modal-body">
+                <div class="fraud-warning hidden" id="fraud-warning">
+                    <span class="warning-icon">⚠️</span>
+                    <span id="fraud-warning-text">Potential document tampering detected</span>
+                </div>
+
+                <div id="comparison-fields" class="comparison-fields">
+                    <!-- Fields will be populated by JS -->
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" id="hitl-cancel" class="btn btn-secondary">Cancel</button>
+                <button type="button" id="hitl-confirm" class="btn btn-primary">Confirm Selections</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js?v=2"></script>
 </body>
 </html>

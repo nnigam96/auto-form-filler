@@ -1,0 +1,6 @@
+# Ignore all test images and documents
+# These contain PII and should never be committed
+
+*
+!.gitignore
+!ground_truth.json

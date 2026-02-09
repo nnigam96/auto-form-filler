@@ -88,8 +88,90 @@ def detect_mrz_lines(text: str):
 
 # --- CORE LOGIC ---
 
-def extract_from_mrz_lines(line1: str, line2: str, method: str) -> PassportData:
-    """Parses raw MRZ text lines into Pydantic model."""
+def validate_extracted_data(surname: str, given_names: str, passport_num: str, nationality: str) -> tuple:
+    """
+    Validate extracted passport data for quality issues.
+    
+    Returns:
+        (confidence_adjustment, fraud_flags)
+        confidence_adjustment: Multiplier to reduce confidence (0.0-1.0)
+        fraud_flags: List of detected issues
+    """
+    flags = []
+    confidence_multiplier = 1.0
+    
+    # Check for repeated characters (OCR artifact from watermarks)
+    def has_repeated_chars(text: str, min_repeat: int = 3) -> bool:
+        """Check if text has 3+ consecutive identical characters."""
+        if len(text) < min_repeat:
+            return False
+        for i in range(len(text) - min_repeat + 1):
+            if len(set(text[i:i+min_repeat])) == 1:
+                return True
+        return False
+    
+    # Validate surname
+    if surname:
+        if has_repeated_chars(surname):
+            flags.append(f"Surname has repeated characters: {surname}")
+            confidence_multiplier *= 0.5
+        if len(surname) > 30:
+            flags.append(f"Surname too long: {len(surname)} chars")
+            confidence_multiplier *= 0.7
+        if any(c.isdigit() for c in surname):
+            flags.append(f"Surname contains digits: {surname}")
+            confidence_multiplier *= 0.6
+    
+    # Validate given names
+    if given_names:
+        if has_repeated_chars(given_names):
+            flags.append(f"Given names have repeated characters: {given_names}")
+            confidence_multiplier *= 0.5
+        if len(given_names) > 50:
+            flags.append(f"Given names too long: {len(given_names)} chars")
+            confidence_multiplier *= 0.7
+        # Check for excessive 'k' characters (common OCR error)
+        if given_names.count('k') > 5:
+            flags.append(f"Given names has excessive 'k' characters (likely OCR artifact)")
+            confidence_multiplier *= 0.4
+    
+    # Validate passport number
+    if passport_num:
+        if len(passport_num) < 6:
+            flags.append(f"Passport number too short: {passport_num}")
+            confidence_multiplier *= 0.6
+        if len(passport_num) > 15:
+            flags.append(f"Passport number too long: {passport_num}")
+            confidence_multiplier *= 0.6
+    
+    # Validate nationality code
+    if nationality:
+        if len(nationality) == 3 and not nationality.isalpha():
+            flags.append(f"Nationality code contains non-alpha: {nationality}")
+            confidence_multiplier *= 0.7
+    
+    return confidence_multiplier, flags
+
+
+def extract_from_mrz_lines(
+    line1: str, 
+    line2: str, 
+    method: str, 
+    ocr_confidence: float = 0.5,
+    use_reflection: bool = True,
+    image_path: Optional[Path] = None
+) -> PassportData:
+    """
+    Parses raw MRZ text lines into Pydantic model.
+    
+    Args:
+        line1: MRZ line 1
+        line2: MRZ line 2
+        method: Extraction method name
+        ocr_confidence: Confidence from OCR service (0.0-1.0)
+        use_reflection: Whether to use reflection agent to fix OCR errors (default: True)
+        image_path: Optional path to passport image (for vision-based reflection)
+    """
     line1 = line1.strip().upper().replace(" ", "")
     line2 = line2.strip().upper().replace(" ", "")
 
@@ -110,8 +192,21 @@ def extract_from_mrz_lines(line1: str, line2: str, method: str) -> PassportData:
 
     country_full = COUNTRY_CODES.get(issuing_country, issuing_country)
     nat_full = COUNTRY_CODES.get(nationality, nationality)
-
-    return PassportData(
+    
+    # Validate extracted data (reflection agent will fix any issues)
+    confidence_multiplier, fraud_flags = validate_extracted_data(surname, given, passport_num, nat_full)
+    
+    # Calculate final confidence: base OCR confidence adjusted by validation
+    base_confidence = ocr_confidence
+    final_confidence = base_confidence * confidence_multiplier
+    
+    # Log validation issues
+    if fraud_flags:
+        logger.warning(f"Data quality issues detected: {fraud_flags}")
+        logger.info(f"Confidence adjusted: {base_confidence:.2f} -> {final_confidence:.2f}")
+    
+    # Create initial PassportData
+    initial_data = PassportData(
         surname=surname,
         given_names=given,
         passport_number=passport_num,
@@ -121,8 +216,30 @@ def extract_from_mrz_lines(line1: str, line2: str, method: str) -> PassportData:
         expiry_date=expiry,
         country_of_issue=country_full,
         extraction_method=method,
-        confidence_score=0.90 # High confidence if we got here
+        confidence_score=final_confidence
     )
+    
+    # Use reflection agent to fix errors if issues detected and reflection enabled
+    if fraud_flags and use_reflection:
+        try:
+            from app.extraction.reflection_agent import reflect_and_fix
+            # Pass MRZ lines as a list and image_path separately (matches new signature)
+            corrected_data = reflect_and_fix(
+                initial_data,
+                [line1, line2],
+                fraud_flags,
+                image_path=image_path,
+                use_vision=True,  # Use vision model if image available
+            )
+            if corrected_data:
+                logger.info("Reflection agent successfully corrected OCR errors")
+                return corrected_data
+            else:
+                logger.warning("Reflection agent failed, using original data")
+        except Exception as e:
+            logger.warning(f"Reflection agent error: {e}, using original data")
+    
+    return initial_data
 
 def validate_passporteye_result(data: dict) -> bool:
     """
@@ -177,11 +294,28 @@ def validate_passporteye_result(data: dict) -> bool:
     return True
 
 
-def extract_with_passporteye(image_path: Path) -> Optional[PassportData]:
-    """Primary Method: Uses PassportEye library."""
+def extract_with_passporteye(file_path: Path) -> Optional[PassportData]:
+    """Primary Method: Uses PassportEye library. Handles both images and PDFs."""
     try:
         from passporteye import read_mrz
-        mrz = read_mrz(str(image_path))
+        from app.utils.pdf_utils import pdf_to_images
+        
+        mrz = None
+        
+        # Convert PDF to images if needed, try all pages
+        if file_path.suffix.lower() == ".pdf":
+            images = pdf_to_images(file_path, dpi=300)
+            if not images:
+                return None
+            # Try each page until we find MRZ
+            for image_path in images:
+                mrz = read_mrz(str(image_path))
+                if mrz:
+                    break
+            if mrz is None:
+                return None
+        else:
+            mrz = read_mrz(str(file_path))
 
         if mrz is None: return None
 
@@ -208,7 +342,7 @@ def extract_with_passporteye(image_path: Path) -> Optional[PassportData]:
         logger.warning(f"PassportEye failed: {e}")
         return None
 
-def extract_with_ocr(image_path: Path) -> Optional[PassportData]:
+def extract_with_ocr(file_path: Path) -> Optional[PassportData]:
     """
     Extract using OCR service.
 
@@ -217,17 +351,20 @@ def extract_with_ocr(image_path: Path) -> Optional[PassportData]:
     - Multiple OCR engines (Tesseract, EasyOCR)
     - Multiple preprocessing methods
     - MRZ detection and validation
+    - Multi-page PDFs (tries all pages)
     """
     try:
         from app.extraction.ocr_service import extract_mrz
 
-        mrz_result = extract_mrz(image_path)
+        mrz_result = extract_mrz(file_path)
 
         if mrz_result:
             return extract_from_mrz_lines(
                 mrz_result.line1,
                 mrz_result.line2,
-                method=mrz_result.method
+                method=mrz_result.method,
+                ocr_confidence=mrz_result.confidence,
+                image_path=file_path  # Pass original file_path (PDF or image) for reflection agent
             )
     except Exception as e:
         logger.error(f"OCR extraction failed: {e}")
@@ -237,7 +374,10 @@ def extract_with_ocr(image_path: Path) -> Optional[PassportData]:
 def extract_passport_data(file_path: Path, use_llm: bool = False) -> Optional[PassportData]:
     """
     Main Entry Point.
-    Pipeline: PassportEye -> Best OCR Config -> LLM Vision (optional)
+    Pipeline: Best OCR Config -> LLM Vision (optional)
+    
+    Uses the best OCR configuration from research benchmarks.
+    PassportEye is skipped in favor of the benchmarked best config.
     
     Args:
         file_path: Path to passport image or PDF
@@ -250,32 +390,15 @@ def extract_passport_data(file_path: Path, use_llm: bool = False) -> Optional[Pa
     if not file_path.exists():
         return None
 
-    # Handle PDF to Image conversion if needed
-    if file_path.suffix.lower() == ".pdf":
-        from app.utils.pdf_utils import pdf_to_images
-        images = pdf_to_images(file_path)
-        image_path = images[0] if images else None
-    else:
-        image_path = file_path
-
-    if not image_path:
-        return None
-
-    # 1. Try PassportEye (fastest, most accurate)
-    result = extract_with_passporteye(image_path)
-    if result:
-        logger.info("PassportEye extraction successful")
-        return result
-
-    # 2. Try best OCR configuration (determined by evaluation)
-    result = extract_with_ocr(image_path)
+    # 1. Try best OCR configuration (determined by evaluation) - handles PDFs internally
+    result = extract_with_ocr(file_path)
     if result:
         logger.info("OCR extraction successful")
         return result
 
-    # 3. Last Resort: LLM Vision
+    # 2. Last Resort: LLM Vision - handles PDFs internally
     if use_llm:
-        logger.info("All algorithmic methods failed. Engaging LLM Vision.")
-        return extract_with_llm_vision(image_path)
+        logger.info("Best OCR config failed. Engaging LLM Vision.")
+        return extract_with_llm_vision(file_path)
 
     return None
