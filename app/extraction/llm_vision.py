@@ -1,37 +1,55 @@
+"""
+LLM Vision extraction using Ollama (local) or OpenAI (cloud).
+
+For 16GB MacBook Air, recommended models:
+- llava:7b (default) - Good balance of speed/quality, ~4.5GB RAM
+- llava:13b - Better quality, slower, ~8GB RAM
+- bakllava - Alternative vision model
+
+Usage:
+    # Install Ollama: brew install ollama
+    # Pull model: ollama pull llava:7b
+    # Start server: ollama serve
+"""
+
 import base64
 import logging
 import json
 import os
 import re
+import requests
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional, Type
-
-from openai import OpenAI
-from pydantic import BaseModel
+from typing import Optional
 
 from app.models.schemas import PassportData, Sex
 
 logger = logging.getLogger(__name__)
 
-# Client will be initialized lazily when needed
-_client: Optional[OpenAI] = None
+# Ollama configuration
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llava:7b")
 
 
-def get_client() -> OpenAI:
-    """Get or initialize OpenAI client. Raises error if API key not configured."""
-    global _client
-    if _client is None:
-        from app.config import settings
-        # Try config first, then environment variable
-        api_key = settings.openai_api_key or os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError(
-                "OPENAI_API_KEY not set. LLM extraction requires an API key. "
-                "Set OPENAI_API_KEY in .env file or set use_llm_extraction=False in config."
-            )
-        _client = OpenAI(api_key=api_key)
-    return _client
+def check_ollama_available() -> bool:
+    """Check if Ollama server is running."""
+    try:
+        response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=2)
+        return response.status_code == 200
+    except:
+        return False
+
+
+def get_available_models() -> list:
+    """Get list of available Ollama models."""
+    try:
+        response = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            return [m["name"] for m in data.get("models", [])]
+    except:
+        pass
+    return []
 
 
 def parse_llm_date(date_str: Optional[str]) -> Optional[date]:
@@ -114,59 +132,86 @@ def encode_image(image_path: Path) -> str:
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-def extract_with_llm_vision(image_path: Path) -> Optional[PassportData]:
+def extract_with_ollama(image_path: Path) -> Optional[PassportData]:
     """
-    Uses GPT-4o Vision to extract passport data when algorithmic methods fail.
+    Uses Ollama with LLaVA model to extract passport data locally.
     This handles rotated, blurry, or non-standard passports.
+
+    Requires:
+        - Ollama installed: brew install ollama
+        - Model pulled: ollama pull llava:7b
+        - Server running: ollama serve
     """
+    if not check_ollama_available():
+        logger.error("Ollama server not available. Run 'ollama serve' first.")
+        return None
+
     try:
         base64_image = encode_image(image_path)
-        
-        logger.info(f"Sending image to LLM for extraction: {image_path.name}")
 
-        client = get_client()
-        response = client.chat.completions.create(
-            model="gpt-4o",  # Or "gpt-4-turbo"
-            messages=[
-                {
-                    "role": "system", 
-                    "content": "You are an expert OCR system for passports. Extract the data precisely into JSON format."
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Extract the following fields from this passport image: surname, given_names, passport_number, nationality, date_of_birth, sex, expiry_date, country_of_issue, place_of_birth, issue_date. Return ONLY valid JSON. For dates, use YYYY-MM-DD format (e.g., '1996-10-25'). For sex, use M, F, or X."},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            },
-                        },
-                    ],
+        logger.info(f"Sending image to Ollama ({OLLAMA_MODEL}) for extraction: {image_path.name}")
+
+        prompt = """You are an expert OCR system for passports. Analyze this passport image and extract the following fields into JSON format:
+
+- surname: Family name
+- given_names: First and middle names
+- passport_number: The passport number
+- nationality: 3-letter country code (e.g., IND, USA)
+- date_of_birth: In YYYY-MM-DD format
+- sex: M, F, or X
+- expiry_date: In YYYY-MM-DD format
+- country_of_issue: 3-letter country code
+- place_of_birth: City/state if visible
+- issue_date: In YYYY-MM-DD format if visible
+
+Return ONLY valid JSON, no other text. Example:
+{"surname": "SMITH", "given_names": "JOHN", "passport_number": "AB123456", "nationality": "USA", "date_of_birth": "1990-05-15", "sex": "M", "expiry_date": "2030-05-14", "country_of_issue": "USA"}"""
+
+        response = requests.post(
+            f"{OLLAMA_BASE_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "images": [base64_image],
+                "stream": False,
+                "options": {
+                    "temperature": 0.0,  # Deterministic output
                 }
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.0, # Deterministic output
+            },
+            timeout=120  # Vision models can be slow
         )
 
-        content = response.choices[0].message.content
-        if not content:
+        if response.status_code != 200:
+            logger.error(f"Ollama API error: {response.status_code} - {response.text}")
             return None
-            
-        data = json.loads(content)
-        
+
+        result = response.json()
+        content = result.get("response", "")
+
+        if not content:
+            logger.error("Empty response from Ollama")
+            return None
+
+        # Extract JSON from response (LLaVA sometimes adds explanation text)
+        json_match = re.search(r'\{[^{}]*\}', content, re.DOTALL)
+        if not json_match:
+            logger.error(f"Could not find JSON in Ollama response: {content[:200]}")
+            return None
+
+        data = json.loads(json_match.group())
+
         # Parse dates from LLM response (handles various formats)
         date_of_birth = parse_llm_date(data.get("date_of_birth"))
         expiry_date = parse_llm_date(data.get("expiry_date"))
         issue_date = parse_llm_date(data.get("issue_date"))
-        
+
         # Parse sex - handle string or enum
         sex_value = data.get("sex", "X")
         if isinstance(sex_value, str):
             sex_value = sex_value.upper()
             if sex_value not in ["M", "F", "X"]:
                 sex_value = "X"
-        
+
         # Map JSON to Pydantic Model
         return PassportData(
             surname=data.get("surname", ""),
@@ -179,10 +224,21 @@ def extract_with_llm_vision(image_path: Path) -> Optional[PassportData]:
             country_of_issue=data.get("country_of_issue", ""),
             place_of_birth=data.get("place_of_birth"),
             issue_date=issue_date,
-            extraction_method="llm_vision",
-            confidence_score=0.95
+            extraction_method="ollama_vision",
+            confidence_score=0.90
         )
 
-    except Exception as e:
-        logger.error(f"LLM extraction failed: {e}")
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse JSON from Ollama response: {e}")
         return None
+    except Exception as e:
+        logger.error(f"Ollama extraction failed: {e}")
+        return None
+
+
+def extract_with_llm_vision(image_path: Path) -> Optional[PassportData]:
+    """
+    Main entry point for LLM-based vision extraction.
+    Uses Ollama (local) by default for privacy and cost savings.
+    """
+    return extract_with_ollama(image_path)

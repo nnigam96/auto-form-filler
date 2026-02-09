@@ -344,6 +344,123 @@ async def get_screenshot(filename: str):
     return FileResponse(file_path, media_type="image/png")
 
 
+# =============================================================================
+# V2 Agentic Endpoints (LangGraph)
+# =============================================================================
+
+@app.post("/extract/passport/v2")
+async def extract_passport_v2(
+    file: UploadFile = File(...),
+    use_llm: bool = False,
+):
+    """
+    Extract passport data using the agentic graph.
+
+    This is the v2 endpoint using LangGraph orchestration with:
+    - Parallel OCR execution (PassportEye, Tesseract, EasyOCR)
+    - Voting logic to pick best result
+    - Critic validation for fraud detection
+    - Optional LLM Vision fallback
+    """
+    from app.extraction.graph import graph
+    from app.extraction.state import PassportState
+    from app.extraction.passport import parse_mrz_date, parse_mrz_sex
+
+    # Validate file type
+    allowed_types = [".pdf", ".jpg", ".jpeg", ".png"]
+    file_ext = Path(file.filename).suffix.lower()
+
+    if file_ext not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {allowed_types}"
+        )
+
+    # Save uploaded file
+    file_id = str(uuid.uuid4())[:8]
+    file_path = settings.upload_dir / f"passport_{file_id}{file_ext}"
+
+    async with aiofiles.open(file_path, "wb") as f:
+        content = await file.read()
+        await f.write(content)
+
+    logger.info(f"Saved passport to {file_path}")
+
+    # Convert PDF to image if needed
+    if file_ext == ".pdf":
+        from app.utils.pdf_utils import pdf_to_images
+
+        images = pdf_to_images(file_path)
+        if not images:
+            raise HTTPException(status_code=422, detail="Could not convert PDF to image")
+        image_path = str(images[0])
+    else:
+        image_path = str(file_path)
+
+    # Initialize state
+    initial_state: PassportState = {
+        "image_path": image_path,
+        "ocr_results": [],
+        "final_data": None,
+        "confidence": 0.0,
+        "errors": [],
+        "source": "",
+        "needs_human_review": False,
+        "fraud_flags": [],
+        "use_llm": use_llm,
+    }
+
+    # Run the graph
+    try:
+        result = await graph.ainvoke(initial_state)
+
+        # Build response
+        response = {
+            "success": result["final_data"] is not None,
+            "file_id": file_id,
+            "data": result["final_data"],
+            "confidence": result["confidence"],
+            "source": result["source"],
+            "needs_human_review": result["needs_human_review"],
+            "fraud_flags": result["fraud_flags"],
+            "errors": result["errors"],
+            "ocr_results_summary": [
+                {
+                    "source": r.get("source"),
+                    "success": r.get("success"),
+                    "checksum_valid": r.get("checksum_valid"),
+                }
+                for r in result.get("ocr_results", [])
+            ],
+        }
+
+        # Convert to Pydantic if successful
+        if result["final_data"]:
+            try:
+                data = result["final_data"]
+                passport_data = PassportData(
+                    surname=data.get("surname", ""),
+                    given_names=data.get("given_names", ""),
+                    passport_number=data.get("passport_number", ""),
+                    nationality=data.get("nationality", ""),
+                    date_of_birth=parse_mrz_date(data.get("date_of_birth", ""), False),
+                    sex=parse_mrz_sex(data.get("sex", "X")),
+                    expiry_date=parse_mrz_date(data.get("expiry_date", ""), True),
+                    country_of_issue=data.get("country", ""),
+                    extraction_method=result["source"],
+                    confidence_score=result["confidence"],
+                )
+                response["data"] = passport_data.model_dump()
+            except Exception as e:
+                logger.warning(f"Could not convert to Pydantic: {e}")
+
+        return response
+
+    except Exception as e:
+        logger.error(f"Graph execution failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # For running directly with: python -m app.main
 if __name__ == "__main__":
     import uvicorn
