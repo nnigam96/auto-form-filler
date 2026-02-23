@@ -9,6 +9,9 @@ Handles:
 4. Multiple preprocessing methods
 5. MRZ line detection and validation
 
+The best OCR configuration is determined by research benchmarks.
+See app/extraction/research/ for benchmark tools.
+
 Usage:
     from app.extraction.ocr_service import extract_mrz
 
@@ -17,17 +20,40 @@ Usage:
         print(mrz.line1, mrz.line2)
 """
 
+import json
 import re
 import logging
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict, Any
 
 import cv2
 import numpy as np
 from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+# Path to best config from research benchmarks
+BEST_CONFIG_PATH = Path(__file__).parent / "research" / "best_config.json"
+
+
+def load_best_config() -> Optional[Dict[str, Any]]:
+    """Load best OCR configuration from research benchmarks."""
+    if not BEST_CONFIG_PATH.exists():
+        return None
+
+    try:
+        with open(BEST_CONFIG_PATH) as f:
+            config = json.load(f)
+            logger.info(f"Loaded best config from research: {config.get('full_name')}")
+            return config
+    except Exception as e:
+        logger.warning(f"Could not load best config: {e}")
+        return None
+
+
+# Load best config at module init (cached)
+_best_config = load_best_config()
 
 
 @dataclass
@@ -254,14 +280,69 @@ def validate_mrz_checksum(line2: str) -> bool:
         return False
 
 
+def _try_best_config(image_path: Path, config: Dict[str, Any]) -> Optional[MRZResult]:
+    """
+    Try extraction using the best config from research.
+
+    Args:
+        image_path: Path to passport image
+        config: Best config dict from research/best_config.json
+
+    Returns:
+        MRZResult if successful, None otherwise
+    """
+    method = config.get("method", "tesseract")
+    rotations = [0, 90, 180, 270]
+
+    try:
+        for rotation in rotations:
+            img = rotate_image(image_path, rotation)
+
+            if method == "tesseract":
+                psm = config.get("psm", 6)
+                preprocess = config.get("preprocess", "otsu")
+                processed = preprocess_for_ocr(img, preprocess)
+                text = ocr_tesseract(processed, psm)
+            elif method == "easyocr":
+                preprocess = config.get("preprocess", "none")
+                processed = preprocess_for_ocr(img, preprocess)
+                text = ocr_easyocr(processed)
+            else:
+                continue
+
+            if not text:
+                continue
+
+            mrz = detect_mrz_lines(text)
+            if mrz:
+                line1, line2 = mrz
+                checksum_valid = validate_mrz_checksum(line2)
+
+                if checksum_valid:
+                    return MRZResult(
+                        line1=line1,
+                        line2=line2,
+                        method=config.get("full_name", f"{method}_best"),
+                        rotation=rotation,
+                        confidence=1.0
+                    )
+
+    except Exception as e:
+        logger.debug(f"Best config extraction failed: {e}")
+
+    return None
+
+
 def extract_mrz(file_path: Path) -> Optional[MRZResult]:
     """
     Main entry point: Extract MRZ from passport file.
 
-    Tries multiple strategies:
-    1. Different rotations (0, 90, 180, 270)
-    2. Different OCR engines (Tesseract, EasyOCR)
-    3. Different preprocessing methods
+    Tries the best config from research first, then falls back to
+    exhaustive search if needed:
+    1. Best config from research/best_config.json (if available)
+    2. Different rotations (0, 90, 180, 270)
+    3. Different OCR engines (Tesseract, EasyOCR)
+    4. Different preprocessing methods
 
     Returns MRZResult with the extracted lines, or None if failed.
     """
@@ -270,112 +351,125 @@ def extract_mrz(file_path: Path) -> Optional[MRZResult]:
         logger.error(f"File not found: {file_path}")
         return None
 
-    # Convert PDF to image if needed
+    # Get all pages if PDF, or single image
     if file_path.suffix.lower() == ".pdf":
-        image_path = pdf_to_image(file_path)
-        if not image_path:
+        from app.utils.pdf_utils import pdf_to_images
+        image_paths = pdf_to_images(file_path, dpi=300)
+        if not image_paths:
             return None
     else:
-        image_path = file_path
+        image_paths = [file_path]
 
-    # Strategies to try
-    rotations = [0, 90, 180, 270]
-    preprocess_methods = ["none", "otsu", "adaptive"]
-    psm_modes = [6, 11, 3]  # 6=block, 11=sparse, 3=auto
+    # Try each page until we find MRZ
+    for image_path in image_paths:
+        # Try best config from research first
+        if _best_config:
+            result = _try_best_config(image_path, _best_config)
+            if result and result.confidence >= 1.0:
+                logger.info(f"MRZ extracted using best config: {_best_config.get('full_name')}")
+                return result
 
-    best_result = None
-    best_score = 0
+        # Fallback: exhaustive search
+        # Strategies to try
+        rotations = [0, 90, 180, 270]
+        preprocess_methods = ["none", "otsu", "adaptive"]
+        psm_modes = [6, 11, 3]  # 6=block, 11=sparse, 3=auto
 
-    # Try Tesseract first (faster)
-    for rotation in rotations:
-        try:
-            img = rotate_image(image_path, rotation)
-        except Exception as e:
-            logger.debug(f"Rotation {rotation} failed: {e}")
-            continue
+        best_result = None
+        best_score = 0
 
-        for preprocess in preprocess_methods:
-            for psm in psm_modes:
-                try:
-                    processed = preprocess_for_ocr(img, preprocess)
-                    text = ocr_tesseract(processed, psm)
-
-                    if not text:
-                        continue
-
-                    mrz = detect_mrz_lines(text)
-                    if mrz:
-                        line1, line2 = mrz
-
-                        # Score based on checksum validation
-                        checksum_valid = validate_mrz_checksum(line2)
-                        score = 1.0 if checksum_valid else 0.5
-
-                        if score > best_score:
-                            best_score = score
-                            best_result = MRZResult(
-                                line1=line1,
-                                line2=line2,
-                                method=f"tesseract_psm{psm}_{preprocess}",
-                                rotation=rotation,
-                                confidence=score
-                            )
-
-                        # If checksum passes, we're done
-                        if checksum_valid:
-                            logger.info(f"MRZ found with valid checksum: rotation={rotation}, method=tesseract_psm{psm}_{preprocess}")
-                            return best_result
-
-                except Exception as e:
-                    logger.debug(f"Tesseract attempt failed: {e}")
-                    continue
-
-    # Try EasyOCR as fallback (slower but sometimes better)
-    if best_result is None or best_score < 1.0:
+        # Try Tesseract first (faster)
         for rotation in rotations:
             try:
                 img = rotate_image(image_path, rotation)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Rotation {rotation} failed: {e}")
                 continue
 
             for preprocess in preprocess_methods:
-                try:
-                    processed = preprocess_for_ocr(img, preprocess)
-                    text = ocr_easyocr(processed)
+                for psm in psm_modes:
+                    try:
+                        processed = preprocess_for_ocr(img, preprocess)
+                        text = ocr_tesseract(processed, psm)
 
-                    if not text:
+                        if not text:
+                            continue
+
+                        mrz = detect_mrz_lines(text)
+                        if mrz:
+                            line1, line2 = mrz
+
+                            # Score based on checksum validation
+                            checksum_valid = validate_mrz_checksum(line2)
+                            score = 1.0 if checksum_valid else 0.5
+
+                            if score > best_score:
+                                best_score = score
+                                best_result = MRZResult(
+                                    line1=line1,
+                                    line2=line2,
+                                    method=f"tesseract_psm{psm}_{preprocess}",
+                                    rotation=rotation,
+                                    confidence=score
+                                )
+
+                            # If checksum passes, we're done
+                            if checksum_valid:
+                                logger.info(f"MRZ found with valid checksum: rotation={rotation}, method=tesseract_psm{psm}_{preprocess}")
+                                return best_result
+
+                    except Exception as e:
+                        logger.debug(f"Tesseract attempt failed: {e}")
                         continue
 
-                    mrz = detect_mrz_lines(text)
-                    if mrz:
-                        line1, line2 = mrz
-                        checksum_valid = validate_mrz_checksum(line2)
-                        score = 1.0 if checksum_valid else 0.5
-
-                        if score > best_score:
-                            best_score = score
-                            best_result = MRZResult(
-                                line1=line1,
-                                line2=line2,
-                                method=f"easyocr_{preprocess}",
-                                rotation=rotation,
-                                confidence=score
-                            )
-
-                        if checksum_valid:
-                            logger.info(f"MRZ found with EasyOCR: rotation={rotation}")
-                            return best_result
-
-                except Exception as e:
-                    logger.debug(f"EasyOCR attempt failed: {e}")
+        # Try EasyOCR as fallback (slower but sometimes better)
+        if best_result is None or best_score < 1.0:
+            for rotation in rotations:
+                try:
+                    img = rotate_image(image_path, rotation)
+                except Exception:
                     continue
 
-    if best_result:
-        logger.warning(f"MRZ found but checksum failed: {best_result.method}")
-    else:
-        logger.error("No MRZ found in image")
+                for preprocess in preprocess_methods:
+                    try:
+                        processed = preprocess_for_ocr(img, preprocess)
+                        text = ocr_easyocr(processed)
 
-    return best_result
+                        if not text:
+                            continue
+
+                        mrz = detect_mrz_lines(text)
+                        if mrz:
+                            line1, line2 = mrz
+                            checksum_valid = validate_mrz_checksum(line2)
+                            score = 1.0 if checksum_valid else 0.5
+
+                            if score > best_score:
+                                best_score = score
+                                best_result = MRZResult(
+                                    line1=line1,
+                                    line2=line2,
+                                    method=f"easyocr_{preprocess}",
+                                    rotation=rotation,
+                                    confidence=score
+                                )
+
+                            if checksum_valid:
+                                logger.info(f"MRZ found with EasyOCR: rotation={rotation}")
+                                return best_result
+
+                    except Exception as e:
+                        logger.debug(f"EasyOCR attempt failed: {e}")
+                        continue
+
+        # If we found a result on this page (even without valid checksum), return it
+        if best_result:
+            logger.warning(f"MRZ found but checksum failed: {best_result.method}")
+            return best_result
+
+    # No MRZ found on any page
+    logger.error("No MRZ found in any page")
+    return None
 
 
 # Convenience function for testing

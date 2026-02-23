@@ -1,0 +1,593 @@
+{
+  "inputs": [
+    {
+      "index": 0,
+      "type": "text",
+      "name": "online-account",
+      "id": "online-account",
+      "placeholder": "",
+      "label": "1. Online Account Number (if any)"
+    },
+    {
+      "index": 1,
+      "type": "text",
+      "name": "family-name",
+      "id": "family-name",
+      "placeholder": "",
+      "label": "2.a. Family Name (Last Name)"
+    },
+    {
+      "index": 2,
+      "type": "text",
+      "name": "given-name",
+      "id": "given-name",
+      "placeholder": "",
+      "label": "2.b. Given Name (First Name)"
+    },
+    {
+      "index": 3,
+      "type": "text",
+      "name": "middle-name",
+      "id": "middle-name",
+      "placeholder": "",
+      "label": "2.c. Middle Name"
+    },
+    {
+      "index": 4,
+      "type": "text",
+      "name": "street-number",
+      "id": "street-number",
+      "placeholder": "",
+      "label": "3.a. Street Number and Name"
+    },
+    {
+      "index": 5,
+      "type": "checkbox",
+      "name": "apt-type",
+      "id": "apt",
+      "placeholder": "",
+      "label": "Apt."
+    },
+    {
+      "index": 6,
+      "type": "checkbox",
+      "name": "apt-type",
+      "id": "ste",
+      "placeholder": "",
+      "label": "Ste."
+    },
+    {
+      "index": 7,
+      "type": "checkbox",
+      "name": "apt-type",
+      "id": "flr",
+      "placeholder": "",
+      "label": "Flr."
+    },
+    {
+      "index": 8,
+      "type": "text",
+      "name": "apt-number",
+      "id": "apt-number",
+      "placeholder": "",
+      "label": ""
+    },
+    {
+      "index": 9,
+      "type": "text",
+      "name": "city",
+      "id": "city",
+      "placeholder": "",
+      "label": "3.c. City"
+    },
+    {
+      "index": 10,
+      "type": "text",
+      "name": "zip",
+      "id": "zip",
+      "placeholder": "",
+      "label": "3.e. ZIP Code"
+    },
+    {
+      "index": 11,
+      "type": "text",
+      "name": "country",
+      "id": "country",
+      "placeholder": "",
+      "label": "3.f. Country"
+    },
+    {
+      "index": 12,
+      "type": "tel",
+      "name": "daytime-phone",
+      "id": "daytime-phone",
+      "placeholder": "",
+      "label": "4. Daytime Telephone Number"
+    },
+    {
+      "index": 13,
+      "type": "tel",
+      "name": "mobile-phone",
+      "id": "mobile-phone",
+      "placeholder": "",
+      "label": "5. Mobile Telephone Number (if any)"
+    },
+    {
+      "index": 14,
+      "type": "email",
+      "name": "email",
+      "id": "email",
+      "placeholder": "",
+      "label": "6. Email Address (if any)"
+    },
+    {
+      "index": 15,
+      "type": "checkbox",
+      "name": "eligibility",
+      "id": "attorney-eligible",
+      "placeholder": "",
+      "label": ""
+    },
+    {
+      "index": 16,
+      "type": "text",
+      "name": "licensing-authority",
+      "id": "licensing-authority",
+      "placeholder": "",
+      "label": "Licensing Authority"
+    },
+    {
+      "index": 17,
+      "type": "text",
+      "name": "bar-number",
+      "id": "bar-number",
+      "placeholder": "",
+      "label": "1.b. Bar Number (if applicable)"
+    },
+    {
+      "index": 18,
+      "type": "checkbox",
+      "name": "subject-to-orders",
+      "id": "not-subject",
+      "placeholder": "",
+      "label": "am not"
+    },
+    {
+      "index": 19,
+      "type": "checkbox",
+      "name": "subject-to-orders",
+      "id": "am-subject",
+      "placeholder": "",
+      "label": "am"
+    },
+    {
+      "index": 20,
+      "type": "text",
+      "name": "law-firm",
+      "id": "law-firm",
+      "placeholder": "",
+      "label": "1.d. Name of Law Firm or Organization (if applicable)"
+    },
+    {
+      "index": 21,
+      "type": "checkbox",
+      "name": "eligibility",
+      "id": "accredited-rep",
+      "placeholder": "",
+      "label": ""
+    },
+    {
+      "index": 22,
+      "type": "text",
+      "name": "recognized-org",
+      "id": "recognized-org",
+      "placeholder": "",
+      "label": "2.b. Name of Recognized Organization"
+    },
+    {
+      "index": 23,
+      "type": "date",
+      "name": "accreditation-date",
+      "id": "accreditation-date",
+      "placeholder": "",
+      "label": "2.c. Date of Accreditation"
+    },
+    {
+      "index": 24,
+      "type": "checkbox",
+      "name": "eligibility",
+      "id": "associated-with",
+      "placeholder": "",
+      "label": "3. I am associated with"
+    },
+    {
+      "index": 25,
+      "type": "text",
+      "name": "associated-with-name",
+      "id": "associated-with-name",
+      "placeholder": "",
+      "label": ""
+    },
+    {
+      "index": 26,
+      "type": "checkbox",
+      "name": "eligibility",
+      "id": "law-student",
+      "placeholder": "",
+      "label": "4.a. I am a law student or law graduate working under the direct supervision of the attorney or representative of record on this form."
+    },
+    {
+      "index": 27,
+      "type": "text",
+      "name": "student-name",
+      "id": "student-name",
+      "placeholder": "",
+      "label": "4.b. Name of Law Student or Law Graduate"
+    },
+    {
+      "index": 28,
+      "type": "text",
+      "name": "passport-surname",
+      "id": "passport-surname",
+      "placeholder": "",
+      "label": "1.a. Last Name"
+    },
+    {
+      "index": 29,
+      "type": "text",
+      "name": "passport-given-names",
+      "id": "passport-given-names",
+      "placeholder": "",
+      "label": "1.b. First Name(s)"
+    },
+    {
+      "index": 30,
+      "type": "text",
+      "name": "passport-given-names",
+      "id": "passport-given-names",
+      "placeholder": "",
+      "label": "1.b. First Name(s)"
+    },
+    {
+      "index": 31,
+      "type": "text",
+      "name": "passport-number",
+      "id": "passport-number",
+      "placeholder": "",
+      "label": "2. Passport Number"
+    },
+    {
+      "index": 32,
+      "type": "text",
+      "name": "passport-country",
+      "id": "passport-country",
+      "placeholder": "",
+      "label": "3. Country of Issue"
+    },
+    {
+      "index": 33,
+      "type": "text",
+      "name": "passport-nationality",
+      "id": "passport-nationality",
+      "placeholder": "",
+      "label": "4. Nationality"
+    },
+    {
+      "index": 34,
+      "type": "date",
+      "name": "passport-dob",
+      "id": "passport-dob",
+      "placeholder": "",
+      "label": "5.a. Date of Birth"
+    },
+    {
+      "index": 35,
+      "type": "text",
+      "name": "passport-pob",
+      "id": "passport-pob",
+      "placeholder": "",
+      "label": "5.b. Place of Birth"
+    },
+    {
+      "index": 36,
+      "type": "date",
+      "name": "passport-issue-date",
+      "id": "passport-issue-date",
+      "placeholder": "",
+      "label": "7.a. Date of Issue"
+    },
+    {
+      "index": 37,
+      "type": "date",
+      "name": "passport-expiry-date",
+      "id": "passport-expiry-date",
+      "placeholder": "",
+      "label": "7.b. Date of Expiration"
+    },
+    {
+      "index": 38,
+      "type": "checkbox",
+      "name": "notices-option",
+      "id": "notices-to-attorney",
+      "placeholder": "",
+      "label": "1.a. I request that all original notices on an application or petition be sent to the business address of my attorney or representative as listed in this form."
+    },
+    {
+      "index": 39,
+      "type": "checkbox",
+      "name": "documents-option",
+      "id": "documents-to-attorney",
+      "placeholder": "",
+      "label": "1.b. I request that any important documents that I receive be sent to the business address of my attorney or representative."
+    },
+    {
+      "index": 40,
+      "type": "checkbox",
+      "name": "docs-option",
+      "id": "docs-to-me",
+      "placeholder": "",
+      "label": "1.c. I request that important documentation be sent to me at my mailing address."
+    },
+    {
+      "index": 41,
+      "type": "date",
+      "name": "client-signature-date",
+      "id": "client-signature-date",
+      "placeholder": "",
+      "label": "2. Date of Signature"
+    },
+    {
+      "index": 42,
+      "type": "date",
+      "name": "attorney-signature-date",
+      "id": "attorney-signature-date",
+      "placeholder": "",
+      "label": "1. Date of Signature"
+    }
+  ],
+  "selects": [
+    {
+      "index": 0,
+      "name": "state",
+      "id": "state",
+      "label": "3.d. State",
+      "options": [
+        {
+          "value": "",
+          "text": "Select a state"
+        },
+        {
+          "value": "AL",
+          "text": "Alabama"
+        },
+        {
+          "value": "AK",
+          "text": "Alaska"
+        },
+        {
+          "value": "AZ",
+          "text": "Arizona"
+        },
+        {
+          "value": "AR",
+          "text": "Arkansas"
+        },
+        {
+          "value": "CA",
+          "text": "California"
+        },
+        {
+          "value": "CO",
+          "text": "Colorado"
+        },
+        {
+          "value": "CT",
+          "text": "Connecticut"
+        },
+        {
+          "value": "DE",
+          "text": "Delaware"
+        },
+        {
+          "value": "DC",
+          "text": "District of Columbia"
+        },
+        {
+          "value": "FL",
+          "text": "Florida"
+        },
+        {
+          "value": "GA",
+          "text": "Georgia"
+        },
+        {
+          "value": "HI",
+          "text": "Hawaii"
+        },
+        {
+          "value": "ID",
+          "text": "Idaho"
+        },
+        {
+          "value": "IL",
+          "text": "Illinois"
+        },
+        {
+          "value": "IN",
+          "text": "Indiana"
+        },
+        {
+          "value": "IA",
+          "text": "Iowa"
+        },
+        {
+          "value": "KS",
+          "text": "Kansas"
+        },
+        {
+          "value": "KY",
+          "text": "Kentucky"
+        },
+        {
+          "value": "LA",
+          "text": "Louisiana"
+        },
+        {
+          "value": "ME",
+          "text": "Maine"
+        },
+        {
+          "value": "MD",
+          "text": "Maryland"
+        },
+        {
+          "value": "MA",
+          "text": "Massachusetts"
+        },
+        {
+          "value": "MI",
+          "text": "Michigan"
+        },
+        {
+          "value": "MN",
+          "text": "Minnesota"
+        },
+        {
+          "value": "MS",
+          "text": "Mississippi"
+        },
+        {
+          "value": "MO",
+          "text": "Missouri"
+        },
+        {
+          "value": "MT",
+          "text": "Montana"
+        },
+        {
+          "value": "NE",
+          "text": "Nebraska"
+        },
+        {
+          "value": "NV",
+          "text": "Nevada"
+        },
+        {
+          "value": "NH",
+          "text": "New Hampshire"
+        },
+        {
+          "value": "NJ",
+          "text": "New Jersey"
+        },
+        {
+          "value": "NM",
+          "text": "New Mexico"
+        },
+        {
+          "value": "NY",
+          "text": "New York"
+        },
+        {
+          "value": "NC",
+          "text": "North Carolina"
+        },
+        {
+          "value": "ND",
+          "text": "North Dakota"
+        },
+        {
+          "value": "OH",
+          "text": "Ohio"
+        },
+        {
+          "value": "OK",
+          "text": "Oklahoma"
+        },
+        {
+          "value": "OR",
+          "text": "Oregon"
+        },
+        {
+          "value": "PA",
+          "text": "Pennsylvania"
+        },
+        {
+          "value": "RI",
+          "text": "Rhode Island"
+        },
+        {
+          "value": "SC",
+          "text": "South Carolina"
+        },
+        {
+          "value": "SD",
+          "text": "South Dakota"
+        },
+        {
+          "value": "TN",
+          "text": "Tennessee"
+        },
+        {
+          "value": "TX",
+          "text": "Texas"
+        },
+        {
+          "value": "UT",
+          "text": "Utah"
+        },
+        {
+          "value": "VT",
+          "text": "Vermont"
+        },
+        {
+          "value": "VA",
+          "text": "Virginia"
+        },
+        {
+          "value": "WA",
+          "text": "Washington"
+        },
+        {
+          "value": "WV",
+          "text": "West Virginia"
+        },
+        {
+          "value": "WI",
+          "text": "Wisconsin"
+        },
+        {
+          "value": "WY",
+          "text": "Wyoming"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "passport-sex",
+      "id": "passport-sex",
+      "label": "6. Sex",
+      "options": [
+        {
+          "value": "",
+          "text": "Select"
+        },
+        {
+          "value": "M",
+          "text": "M"
+        },
+        {
+          "value": "F",
+          "text": "F"
+        },
+        {
+          "value": "X",
+          "text": "X"
+        }
+      ]
+    }
+  ],
+  "textareas": [],
+  "radios": {},
+  "checkboxes": {}
+}

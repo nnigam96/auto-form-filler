@@ -1,0 +1,75 @@
+{
+  "_schema": {
+    "version": "1.0",
+    "description": "Ground truth data for OCR benchmark evaluation",
+    "fields": {
+      "exact_match": ["passport_number", "date_of_birth", "expiry_date", "sex", "nationality"],
+      "fuzzy_match": ["surname", "given_names"],
+      "optional": ["place_of_birth", "issue_date", "country_of_issue"]
+    }
+  },
+  "images": {
+    "interview_passport.jpg": {
+      "description": "Adversarial Sample (Michelle De La Paz) - Visual DOB (1999) does not match MRZ DOB (1964). Visual Expiry (Feb) does not match MRZ Expiry (Dec).",
+      "expected": {
+        "surname": null,
+        "given_names": null,
+        "passport_number": null,
+        "nationality": null,
+        "date_of_birth": null,
+        "sex": null,
+        "expiry_date": null,
+        "country_of_issue": null
+      },
+      "expects_human_review": true,
+      "expected_fraud_flags": [
+        "DOB_MISMATCH",
+        "EXPIRY_DATE_MISMATCH",
+        "MRZ_CHECKSUM_FAILURE"
+      ],
+      "notes": "Visual DOB is 1999-08-07, but MRZ '640117' decodes to 1964-01-17. Visual Expiry is 2018-02-05, but MRZ '181205' decodes to 2018-12-05."
+    },
+    "Passport Front.pdf": {
+      "description": "Valid Indian Passport (Nikhil Nigam) - Standard scan, high quality.",
+      "expected": {
+        "surname": "NIGAM",
+        "given_names": "NIKHIL RAJESH",
+        "passport_number": "N7178292",
+        "nationality": "IND",
+        "date_of_birth": "1996-10-25",
+        "sex": "M",
+        "expiry_date": "2026-02-15",
+        "country_of_issue": "IND"
+      },
+      "expects_human_review": false,
+      "expected_fraud_flags": []
+    },
+    "attested passport.pdf": {
+      "description": "Valid Indian Passport embedded in California Jurat (Notarized). System must isolate passport region from notary text.",
+      "expected": {
+        "surname": "NIGAM",
+        "given_names": "NIKHIL RAJESH",
+        "passport_number": "N7178292",
+        "nationality": "IND",
+        "date_of_birth": "1996-10-25",
+        "sex": "M",
+        "expiry_date": "2026-02-15",
+        "country_of_issue": "IND"
+      },
+      "expects_human_review": false,
+      "expected_fraud_flags": []
+    }
+  },
+  "_instructions": {
+    "adding_images": [
+      "1. Place test image in this directory (test_data/)",
+      "2. Add entry to 'images' object with filename as key",
+      "3. Fill in expected values (use null if extraction should fail)",
+      "4. Set expects_human_review: true for adversarial cases",
+      "5. List expected_fraud_flags that should be triggered"
+    ],
+    "date_format": "YYYY-MM-DD (ISO 8601)",
+    "sex_values": "M, F, or X",
+    "nationality_format": "3-letter country code (ISO 3166-1 alpha-3)"
+  }
+}

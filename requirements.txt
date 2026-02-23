@@ -28,6 +28,11 @@ anthropic
 # Utilities
 python-dotenv
 aiofiles
+typing_extensions
+
+# Agentic Framework
+langgraph
+langchain-core
 
 # Development
 pytest

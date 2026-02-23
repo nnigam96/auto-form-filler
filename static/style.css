@@ -437,3 +437,241 @@ footer {
     color: #888;
     font-size: 0.9rem;
 }
+
+/* =============================================================================
+   HITL Modal Styles
+   ============================================================================= */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-container {
+    background: white;
+    border-radius: 16px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+}
+
+.modal-header h2 {
+    color: #dc2626;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.modal-header h2::before {
+    content: "⚠️";
+}
+
+.modal-subtitle {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    background: #f8fafc;
+}
+
+/* Fraud Warning */
+.fraud-warning {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #991b1b;
+    font-weight: 500;
+}
+
+.warning-icon {
+    font-size: 1.5rem;
+}
+
+/* Comparison Fields */
+.comparison-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.comparison-field {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.field-header {
+    background: #f1f5f9;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #374151;
+    text-transform: capitalize;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.field-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.field-option {
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 2px solid transparent;
+    position: relative;
+}
+
+.field-option:first-child {
+    border-right: 1px solid #e5e7eb;
+}
+
+.field-option:hover {
+    background: #f8fafc;
+}
+
+.field-option.selected {
+    background: #eff6ff;
+    border-color: #2563eb;
+}
+
+.field-option.selected::after {
+    content: "✓";
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: #2563eb;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.option-source {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.option-source.mrz {
+    color: #7c3aed;
+}
+
+.option-source.visual {
+    color: #0891b2;
+}
+
+.option-value {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #1f2937;
+    word-break: break-all;
+}
+
+.option-value.empty {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.option-note {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.5rem;
+}
+
+/* Aligned field (no conflict) */
+.comparison-field.aligned {
+    opacity: 0.7;
+}
+
+.comparison-field.aligned .field-header {
+    background: #f0fdf4;
+}
+
+.comparison-field.aligned .field-header::after {
+    content: " ✓ Aligned";
+    color: #22c55e;
+    font-weight: normal;
+    font-size: 0.85rem;
+}
+
+/* Responsive modal */
+@media (max-width: 640px) {
+    .modal-container {
+        max-height: 95vh;
+        margin: 0.5rem;
+    }
+
+    .field-options {
+        grid-template-columns: 1fr;
+    }
+
+    .field-option:first-child {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+    }
+}
